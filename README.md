@@ -28,13 +28,7 @@ Install the relevant dependencies with:
 
 ```bash
 # Run from the top level of this repository
-pip install -e .[plots]
-```
-
-If using `uv`, you can also install the dependencies with:
-
-```bash
-uv pip install -e ".[plots]"
+pixi install
 ```
 
 Note: there are a number of optional dependencies that can be installed, if
@@ -46,13 +40,7 @@ To run all benchmarks (with all images) run the following tox commands:
 
 ```bash
 # Run with an image of a heart from the Human Organ Atlas
-tox -- --benchmark-only --image=heart --config=all --benchmark-storage=data/results/heart
-
-# Run with a dense segmentation (small subset of C3 segmentation data from the H01 release)
-tox -- --benchmark-only --image=dense --config=all --benchmark-storage=data/results/dense
-
-# Run with a sparse segmentation (small subset of '104 proofread cells' segmentation data from the H01 release)
-tox -- --benchmark-only --image=sparse --config=all --benchmark-storage=data/results/sparse
+pixi run tox -- --benchmark-only --image=heart --config=all --benchmark-storage=data/results/heart
 ```
 
 This will run all benchmarks via `zarr-python` version 2 + 3 and `tensorstore`
