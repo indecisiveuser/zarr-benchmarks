@@ -40,7 +40,7 @@ To run all benchmarks (with all images) run the following tox commands:
 
 ```bash
 # Run with an image of a heart from the Human Organ Atlas
-pixi run tox -- --benchmark-only --image=heart --config=all --benchmark-storage=data/results/heart
+pixi run tox -- --benchmark-only --image=data --config=all --benchmark-storage=data/results/heart
 ```
 
 This will run all benchmarks via `zarr-python` version 2 + 3 and `tensorstore`
@@ -71,7 +71,7 @@ selection of parameters for quick test runs). To run with parameters from a
 single config file use e.g.
 
 ```bash
-tox -- --benchmark-only --image=heart --config=shuffle --benchmark-storage=data/results/heart
+pixi run tox -- --benchmark-only --image=heart --config=shuffle --benchmark-storage=data/results/data
 ```
 
 ### Specific package
@@ -79,14 +79,17 @@ tox -- --benchmark-only --image=heart --config=shuffle --benchmark-storage=data/
 To only run benchmarks for a specific package, use the `-e` option:
 
 ```bash
-# tensorstore only
-tox run -e py313-tensorstore -- --benchmark-only --image=heart --config=all --benchmark-storage=data/results/heart
+# tensorstore zarr only
+pixi run tox run -e py313-tensorstore-zarr -- --benchmark-only --image=data --config=all --benchmark-storage=data/results/heart
+
+# tensorstore zarr only
+pixi run tox run -e py313-tensorstore-n5 -- --benchmark-only --image=data --config=all --benchmark-storage=data/results/heart
 
 # zarr-python v2 only
-tox run -e py313-zarrv2 -- --benchmark-only --image=heart --config=all --benchmark-storage=data/results/heart
+pixi run tox run -e py313-zarrv2 -- --benchmark-only --image=heart --config=all --benchmark-storage=data/results/heart
 
 # zarr-python v3 only
-tox run -e py313-zarrv3 -- --benchmark-only --image=heart --config=all --benchmark-storage=data/results/heart
+pixi run tox run -e py313-zarrv3 -- --benchmark-only --image=heart --config=all --benchmark-storage=data/results/heart
 ```
 
 To see a list of available environments, use `tox -l`.
@@ -97,28 +100,28 @@ Removing the `--config` option will use a small `dev` config to test a small
 selection of parameters:
 
 ```bash
-tox -- --benchmark-only --image=heart --benchmark-storage=data/results/heart
+pixi run tox -- --benchmark-only --image=data --benchmark-storage=data/results/heart
 ```
 
 You can also use a smaller image (128x128x128 numpy array) by using
 `--image=dev` (this is also the default if no `--image` option is provided):
 
 ```bash
-tox -- --benchmark-only --image=dev --benchmark-storage=data/results/dev
+pixi run tox -- --benchmark-only --image=dev --benchmark-storage=data/results/dev
 ```
 
 You can also override the default number of rounds / warmup rounds for each
 benchmark with:
 
 ```bash
-tox -- --benchmark-only --image=dev --rounds=1 --warmup-rounds=0 --benchmark-storage=data/results/dev
+pixi run tox -- --benchmark-only --image=dev --rounds=1 --warmup-rounds=0 --benchmark-storage=data/results/dev
 ```
 
 As described in the [specific package section](#specific-package), you can also
 run with a single tox environment via e.g.:
 
 ```bash
-tox run -e py313-tensorstore -- --benchmark-only --image=dev --benchmark-storage=data/results/dev
+pixi run tox run -e py313-tensorstore-zarr -- --benchmark-only --image=dev --benchmark-storage=data/results/dev
 ```
 
 Everything after the first `--` will be passed to the internal `pytest` call, so
@@ -130,7 +133,7 @@ Running `tox` without `--benchmark-only`, will run the tests + the benchmarks.
 To only run the tests use:
 
 ```bash
-tox -- --benchmark-skip
+pixi run tox -- --benchmark-skip
 ```
 
 ## Creating plots
