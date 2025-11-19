@@ -38,8 +38,8 @@ def write_zarr_array(
 
     zarr_array = zarr.create_array(
         store=store_path,
-        shape=image.shape,
-        chunks=chunks,
+        shape=tuple(int(s) for s in image.shape),
+        chunks=tuple(int(c) for c in chunks),
         dtype=image.dtype,
         compressors=compressor,
         zarr_format=zarr_spec,

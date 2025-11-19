@@ -14,7 +14,6 @@ def get_compression_ratio(store_path: pathlib.Path, zarr_spec: Literal[2, 3]) ->
     nbytes_stored = utils.get_directory_size(store_path)
     return nbytes / nbytes_stored
 
-
 def _open_zarr_array(
     store_path: pathlib.Path, zarr_spec: Literal[2, 3]
 ) -> ts.TensorStore:
@@ -28,17 +27,63 @@ def _open_zarr_array(
             "driver": driver,
             "kvstore": {
                 "driver": "file",
-                "path": str(store_path.resolve()),
+                "path": str(store_path),
             },
         },
     ).result()
 
+def _open_n5_array(store_path: pathlib.Path) -> ts.TensorStore:
+    return ts.open(
+        {
+            "driver": 'n5',
+            "kvstore": {
+                "driver": "file",
+                "path": str(store_path),
+            },
+        },
+    ).result()
 
 def read_zarr_array(store_path: pathlib.Path, zarr_spec: Literal[2, 3]) -> npt.NDArray:
     """Read the v2/v3 zarr spec with tensorstore"""
     zarr_read = _open_zarr_array(store_path, zarr_spec)
     read_image = zarr_read[:].read().result()
     return read_image
+
+def read_n5_array(store_path: pathlib.Path) -> npt.NDArray:
+    """Read the n5 spec with tensorstore"""
+    n5_read = _open_n5_array(store_path)
+    read_image = n5_read[:].read().result()
+    return read_image
+
+def _write_n5(
+    image: npt.NDArray,
+    store_path: pathlib.Path,
+    *,
+    chunks: tuple[int],
+    compressor: dict | None,
+    write_empty_chunks: bool = True,
+) -> None:
+    dataset = ts.open(
+        {
+            "driver": "n5",
+            "kvstore": {
+                "driver": "file",
+                "path": str(store_path),
+            },
+            "metadata": {
+                "dataType": str(image.dtype),
+                "dimensions": image.shape,
+                "compression": {"type": "raw"} if compressor is None else compressor,
+                "blockSize": chunks
+            },
+            "create": True,
+            "delete_existing": True,
+            "store_data_equal_to_fill_value": write_empty_chunks,
+        },
+    ).result()
+
+    write_future = dataset[:].write(image)
+    write_future.result()
 
 
 def _write_zarr_array_v2(
@@ -54,7 +99,7 @@ def _write_zarr_array_v2(
             "driver": "zarr",
             "kvstore": {
                 "driver": "file",
-                "path": str(store_path.resolve()),
+                "path": str(store_path),
             },
             "metadata": {
                 "dtype": image.dtype.str,
@@ -86,7 +131,7 @@ def _write_zarr_array_v3(
             "driver": "zarr3",
             "kvstore": {
                 "driver": "file",
-                "path": str(store_path.resolve()),
+                "path": str(store_path),
             },
             "metadata": {
                 "zarr_format": 3,
@@ -153,7 +198,7 @@ def get_blosc_compressor(
     cname: str,
     clevel: int,
     shuffle: Literal["shuffle", "noshuffle", "bitshuffle"],
-    zarr_spec: Literal[2, 3],
+    zarr_spec: Literal[2, 3, 'n5'],
 ) -> dict:
     # see the zarr shuffle docs: https://google.github.io/tensorstore/driver/zarr/index.html#json-driver/zarr/Compressor/blosc.shuffle
     match shuffle:
@@ -168,6 +213,8 @@ def get_blosc_compressor(
 
     if zarr_spec == 2:
         return {"id": "blosc", "cname": cname, "clevel": clevel, "shuffle": shuffle_int}
+    elif zarr_spec == 'n5':
+        return {"type": "blosc", "cname": cname, "clevel": clevel, "shuffle": shuffle_int}
     else:
         return {
             "name": "blosc",
@@ -175,15 +222,19 @@ def get_blosc_compressor(
         }
 
 
-def get_gzip_compressor(level: int, zarr_spec: Literal[2, 3]) -> dict:
+def get_gzip_compressor(level: int, zarr_spec: Literal[2, 3, 'n5']) -> dict:
     if zarr_spec == 2:
         return {"id": "gzip", "level": level}
+    if zarr_spec == 'n5':
+        return {"type": "gzip", "level": level}
     else:
         return {"name": "gzip", "configuration": {"level": level}}
 
 
-def get_zstd_compressor(level: int, zarr_spec: Literal[2, 3]) -> dict:
+def get_zstd_compressor(level: int, zarr_spec: Literal[2, 3, 'n5']) -> dict:
     if zarr_spec == 2:
         return {"id": "zstd", "level": level}
+    elif zarr_spec == 'n5':
+        return {"type": "zstd", "level": level}
     else:
         return {"name": "zstd", "configuration": {"level": level}}

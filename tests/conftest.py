@@ -5,9 +5,7 @@ import numpy as np
 import pytest
 
 from zarr_benchmarks.fetch_datasets import (
-    get_dense_segmentation,
-    get_heart,
-    get_sparse_segmentation,
+    get_data
 )
 from zarr_benchmarks.utils import read_json_file
 
@@ -26,11 +24,9 @@ def pytest_addoption(parser):
         action="store",
         default="dev",
         type=str,
-        choices=["dev", "heart", "dense", "sparse"],
+        choices=["dev", "data"],
         help="Type of image to run benchmarks with: 'dev' is a small 128x128x128 numpy array for testing purposes, "
-        "'heart' is an image of a heart from the human organ atlas, 'dense' is a dense segmentation (small subset of "
-        "C3 segmentation data from the H01 release) and 'sparse' is a sparse segmentation (small subset of '104 "
-        "proofread cells' from the H01 release).",
+        "'data' is your data",
     )
 
     parser.addoption(
@@ -71,12 +67,11 @@ def image(request):
     match image_type:
         case "dev":
             return np.random.rand(128, 128, 128)
-        case "heart":
-            return get_heart()
-        case "dense":
-            return get_dense_segmentation()
-        case "sparse":
-            return get_sparse_segmentation()
+        case "data":
+            # Check if any of the collected test items have the "n5" marker
+            has_n5_marker = any(item.get_closest_marker("n5") for item in request.session.items)
+            is_zarr = not has_n5_marker
+            return get_data(zarr=is_zarr)
         case _:
             raise ValueError(f"Invalid --image option {image_type}")
 
@@ -85,6 +80,12 @@ def image(request):
 def store_path():
     """Path to store zarr images written from benchmarks"""
     return pathlib.Path("data/output/temp-benchmarks.zarr")
+
+
+@pytest.fixture()
+def n5_store_path():
+    """Path to store n5 images written from benchmarks"""
+    return pathlib.Path("data/output/temp-benchmarks.n5")
 
 
 def _expand_min_max(config: dict) -> dict:

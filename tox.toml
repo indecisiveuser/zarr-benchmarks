@@ -1,18 +1,32 @@
-env_list = ["py313-zarrv2", "py313-zarrv3", "py313-tensorstore"]
+env_list = ["py313-zarrv2", "py313-zarrv3", "py313-tensorstore-zarr", "py313-tensorstore-n5"]
 requires = ["tox>=4.24"]
 
-[env.py313-tensorstore]
+[env.py313-tensorstore-zarr]
 commands = [
     [
         "pytest",
-        "--benchmark-save=tensorstore",
+        "--benchmark-save=tensorstore-zarr",
         "--benchmark-save-data",
         "-m",
-        "tensorstore",
+        "tensorstore and not n5",
         {extend = true, replace = "posargs"},
     ],
 ]
-description = "Run benchmarks under tensorstore"
+description = "Run Zarr benchmarks under tensorstore"
+extras = ["tensorstore"]
+
+[env.py313-tensorstore-n5]
+commands = [
+    [
+        "pytest",
+        "--benchmark-save=tensorstore-n5",
+        "--benchmark-save-data",
+        "-m",
+        "n5",
+        {extend = true, replace = "posargs"},
+    ],
+]
+description = "Run N5 benchmarks under tensorstore"
 extras = ["tensorstore"]
 
 [env.py313-zarrv2]

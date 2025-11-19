@@ -37,7 +37,28 @@ Issues = "https://github.com/HEFTIEProject/zarr-benchmarks/issues"
 
 [tool.pytest.ini_options]
 addopts = "--strict-markers"
-markers = ["tensorstore", "zarr_python"]
+markers = ["tensorstore", "zarr_python", "n5"]
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["osx-arm64"]
+
+[tool.pixi.pypi-dependencies]
+zarr_benchmarks = { path = ".", editable = true }
+
+[tool.pixi.environments]
+default = { solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
+plots = { features = ["plots"], solve-group = "default" }
+tensorstore = { features = ["tensorstore"], solve-group = "default" }
+zarr-python-v2 = { features = ["zarr-python-v2"], solve-group = "zarr2" }
+zarr-python-v3 = { features = ["zarr-python-v3"], solve-group = "zarr3" }
+
+[tool.pixi.tasks]
+
+[tool.pixi.dependencies]
+pandas = ">=2.3.3,<3"
+seaborn = ">=0.13.2,<0.14"

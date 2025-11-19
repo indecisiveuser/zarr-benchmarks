@@ -22,6 +22,9 @@ def prepare_benchmarks_dataframe(json_dict: dict) -> pd.DataFrame:
     benchmark_df = pd.json_normalize(json_dict["benchmarks"])
     benchmark_df["machine"] = json_dict["machine_info"]["system"]
 
+    # Normalize group names (e.g., "write_n5" -> "write", "read_n5" -> "read")
+    benchmark_df["group"] = benchmark_df["group"].str.replace("_n5", "", regex=False)
+
     # copy compression ratio from read benchmarks to write benchmarks
     param_cols = [col for col in benchmark_df if col.startswith("params")]
     benchmark_df["compression_ratio"] = benchmark_df.groupby(
@@ -58,26 +61,46 @@ def prepare_benchmarks_dataframe(json_dict: dict) -> pd.DataFrame:
 
     # remove un-needed columns
     stats_cols = [col for col in benchmark_df if col.startswith("stats")]
-    benchmark_df = benchmark_df[
-        [
-            "machine",
-            "group",
-            "compressor",
-            "compression_level",
-            "compression_ratio",
-            "params.chunk_size",
-            "params.blosc_shuffle",
-            "params.zarr_spec",
+    if "params.zarr_spec" in benchmark_df.columns:
+        benchmark_df = benchmark_df[
+            [
+                "machine",
+                "group",
+                "compressor",
+                "compression_level",
+                "compression_ratio",
+                "params.chunk_size",
+                "params.blosc_shuffle",
+                "params.zarr_spec"
+            ]
+            + stats_cols
         ]
-        + stats_cols
-    ]
-    benchmark_df = benchmark_df.rename(
-        columns={
-            "params.chunk_size": "chunk_size",
-            "params.blosc_shuffle": "blosc_shuffle",
-            "params.zarr_spec": "zarr_spec",
-        }
-    )
+        benchmark_df = benchmark_df.rename(
+            columns={
+                "params.chunk_size": "chunk_size",
+                "params.blosc_shuffle": "blosc_shuffle",
+                "params.zarr_spec": "zarr_spec",
+            }
+     )
+    else:
+        benchmark_df = benchmark_df[
+            [
+                "machine",
+                "group",
+                "compressor",
+                "compression_level",
+                "compression_ratio",
+                "params.chunk_size",
+                "params.blosc_shuffle",
+            ]
+            + stats_cols
+        ]
+        benchmark_df = benchmark_df.rename(
+            columns={
+                "params.chunk_size": "chunk_size",
+                "params.blosc_shuffle": "blosc_shuffle",
+            }
+     )
 
     return benchmark_df
 
@@ -89,13 +112,18 @@ def get_benchmarks_dataframe(package_paths_dict: dict) -> pd.DataFrame:
     for id, json_path in package_paths_dict.items():
         benchmark_df = prepare_benchmarks_dataframe(utils.read_json_file(json_path))
         benchmark_df.insert(0, "package", id)
+
+        # Set zarr_spec to 'n5' for n5 packages
+        if 'n5' in id.lower():
+            benchmark_df['zarr_spec'] = 'n5'
+
         benchmark_dfs.append(benchmark_df)
 
     return pd.concat(benchmark_dfs, ignore_index=True)
 
 
 def create_shuffle_plots(
-    benchmarks_df: pd.DataFrame, plots_dir: Path, zarr_format: Literal[2, 3]
+    benchmarks_df: pd.DataFrame, plots_dir: Path, zarr_format: Literal[2, 3, 'n5']
 ) -> None:
     package = "tensorstore"
     shuffle_benchmarks = benchmarks_df[
@@ -121,7 +149,7 @@ def create_shuffle_plots(
         y_axis="compression_ratio",
         plots_dir=save_dir,
         plot_name="compression_ratio",
-        title=f"Shuffle vs. compression ratio (Zarr format v{zarr_format}, {package})",
+        title=f"Shuffle vs. compression ratio (Format {zarr_format}, {package})",
     )
 
     plot_catplot_benchmarks(
@@ -130,7 +158,7 @@ def create_shuffle_plots(
         y_axis="stats.mean",
         plots_dir=save_dir,
         plot_name="write",
-        title=f"Shuffle vs. write time (Zarr format v{zarr_format}, {package})",
+        title=f"Shuffle vs. write time (Format {zarr_format}, {package})",
     )
 
     plot_catplot_benchmarks(
@@ -139,25 +167,25 @@ def create_shuffle_plots(
         y_axis="stats.mean",
         plots_dir=save_dir,
         plot_name="read",
-        title=f"Shuffle vs. read time (Zarr format v{zarr_format}, {package})",
+        title=f"Shuffle vs. read time (Format {zarr_format}, {package})",
     )
 
 
 def create_chunk_size_plots(
-    benchmarks_df: pd.DataFrame, plots_dir: Path, zarr_format: Literal[2, 3]
+    benchmarks_df: pd.DataFrame, plots_dir: Path, zarr_format: Literal[2, 3, 'n5']
 ) -> None:
     chunk_size_benchmarks = benchmarks_df[
         (benchmarks_df.compressor == "blosc-zstd")
         & (benchmarks_df.compression_level == 3)
         & (benchmarks_df.blosc_shuffle == "shuffle")
-        & (benchmarks_df.zarr_spec == zarr_format)
+        & ((benchmarks_df.zarr_spec == zarr_format) | (benchmarks_df.zarr_spec == 'n5'))
     ]
 
     chunk_size_write = chunk_size_benchmarks[chunk_size_benchmarks.group == "write"]
     chunk_size_read = chunk_size_benchmarks[chunk_size_benchmarks.group == "read"]
     save_dir = plots_dir / "chunk_size" / f"format_v{zarr_format}"
 
-    spec_str = f"Zarr format v{zarr_format}"
+    spec_str = f"Format {zarr_format}"
 
     plot_relplot_benchmarks(
         chunk_size_read,
@@ -194,24 +222,26 @@ def create_read_write_errorbar_plots_for_package(
     read_write_benchmarks: pd.DataFrame,
     package: str,
     plots_dir: Path,
-    zarr_format: Literal[2, 3],
+    zarr_format: Literal[2, 3, 'n5'],
 ) -> None:
     package_benchmarks = read_write_benchmarks[read_write_benchmarks.package == package]
     write = package_benchmarks[package_benchmarks.group == "write"]
     read = package_benchmarks[package_benchmarks.group == "read"]
 
     write_chunks_128 = write[
-        (write.chunk_size == 128) & (write.zarr_spec == zarr_format)
+        (write.chunk_size == 128) & ((write.zarr_spec == zarr_format) |
+        (write.zarr_spec == 'n5'))
     ]
-    read_chunks_128 = read[(read.chunk_size == 128) & (read.zarr_spec == zarr_format)]
+    read_chunks_128 = read[(read.chunk_size == 128) & ((read.zarr_spec == zarr_format) |
+    (read.zarr_spec == 'n5'))]
 
     if write_chunks_128.empty or read_chunks_128.empty:
         print(
-            f"Skipping read_write errorbar plots for {package}, as no data for Zarr format v{zarr_format}"
+            f"Skipping read_write errorbar plots for {package}, as no data for format {zarr_format}"
         )
         return
 
-    spec_str = f"Zarr format v{zarr_format}"
+    spec_str = f"Format {zarr_format}"
 
     plot_errorbars_benchmarks(
         write_chunks_128,
@@ -238,26 +268,26 @@ def create_read_write_plots_for_package(
     read_write_benchmarks: pd.DataFrame,
     package: str,
     plots_dir: Path,
-    zarr_format: Literal[2, 3],
+    zarr_format: Literal[2, 3, 'n5'],
 ) -> None:
     package_benchmarks = read_write_benchmarks[read_write_benchmarks.package == package]
 
     write = package_benchmarks[
         (package_benchmarks.group == "write")
-        & (package_benchmarks.zarr_spec == zarr_format)
+        & ((package_benchmarks.zarr_spec == zarr_format) | (package_benchmarks.zarr_spec == 'n5'))
     ]
     read = package_benchmarks[
         (package_benchmarks.group == "read")
-        & (package_benchmarks.zarr_spec == zarr_format)
+        & ((package_benchmarks.zarr_spec == zarr_format) | (package_benchmarks.zarr_spec == 'n5'))
     ]
 
     if write.empty or read.empty:
         print(
-            f"Skipping read_write plots for {package}, as no data for Zarr format v{zarr_format}"
+            f"Skipping read_write plots for {package}, as no data for format {zarr_format}"
         )
         return
 
-    spec_str = f"Zarr format v{zarr_format}"
+    spec_str = f"Format v{zarr_format}"
 
     plot_relplot_benchmarks(
         write,
@@ -324,7 +354,10 @@ def create_read_write_plots(
         read_write_benchmarks, "zarr_python_3", plots_dir, zarr_format
     )
     create_read_write_plots_for_package(
-        read_write_benchmarks, "tensorstore", plots_dir, zarr_format
+        read_write_benchmarks, "tensorstore_zarr", plots_dir, zarr_format
+    )
+    create_read_write_plots_for_package(
+        read_write_benchmarks, "tensorstore_n5", plots_dir, zarr_format
     )
 
     create_read_write_errorbar_plots_for_package(
@@ -334,21 +367,30 @@ def create_read_write_plots(
         read_write_benchmarks, "zarr_python_3", plots_dir, zarr_format
     )
     create_read_write_errorbar_plots_for_package(
-        read_write_benchmarks, "tensorstore", plots_dir, zarr_format
+        read_write_benchmarks, "tensorstore_zarr", plots_dir, zarr_format
+    )
+    create_read_write_errorbar_plots_for_package(
+        read_write_benchmarks, "tensorstore_n5", plots_dir, zarr_format
     )
 
     read_chunks_128 = read_write_benchmarks[
         (read_write_benchmarks.group == "read")
         & (read_write_benchmarks.chunk_size == 128)
-        & (read_write_benchmarks.zarr_spec == zarr_format)
+        & ((read_write_benchmarks.zarr_spec == zarr_format) | (read_write_benchmarks.zarr_spec == 'n5'))
     ]
     write_chunks_128 = read_write_benchmarks[
         (read_write_benchmarks.group == "write")
         & (read_write_benchmarks.chunk_size == 128)
-        & (read_write_benchmarks.zarr_spec == zarr_format)
+        & ((read_write_benchmarks.zarr_spec == zarr_format) | (read_write_benchmarks.zarr_spec == 'n5'))
     ]
 
-    spec_str = f"Zarr format v{zarr_format}"
+    if write_chunks_128.empty or read_chunks_128.empty:
+        print(
+            f"Skipping read_write errorbar plots, as no data for format {zarr_format}"
+        )
+        return
+
+    spec_str = f"Format {zarr_format}"
 
     plot_relplot_benchmarks(
         read_chunks_128,
@@ -387,7 +429,7 @@ def create_plots_for_image(image_dir: Path, json_ids: list[str] | None) -> None:
     if len(sub_dirs) == 1:
         results_path = sub_dirs[0]
 
-    print(f"📈 Generating plots from results in {results_path}...")
+    print(f"Generating plots from results in {results_path}...")
 
     if json_ids is None:
         # Find the latest 3 json ids in the sub-dir
@@ -395,16 +437,18 @@ def create_plots_for_image(image_dir: Path, json_ids: list[str] | None) -> None:
         for result_json in results_path.glob("*.json"):
             all_ids.append(result_json.stem.split("_")[0])
 
-        json_ids = sorted(all_ids)[-3:]
+        json_ids = sorted(all_ids)[-4:]
 
     zarr_v2_path = results_path / f"{json_ids[0]}_zarr-python-v2.json"
     zarr_v3_path = results_path / f"{json_ids[1]}_zarr-python-v3.json"
-    tensorstore_path = results_path / f"{json_ids[2]}_tensorstore.json"
+    tensorstore_zarr_path = results_path / f"{json_ids[2]}_tensorstore-zarr.json"
+    tensorstore_n5_path = results_path / f"{json_ids[3]}_tensorstore-n5.json"
 
     package_paths_dict = {
         "zarr_python_2": zarr_v2_path,
         "zarr_python_3": zarr_v3_path,
-        "tensorstore": tensorstore_path,
+        "tensorstore-zarr": tensorstore_zarr_path,
+        "tensorstore-n5": tensorstore_n5_path,
     }
 
     benchmarks_df = get_benchmarks_dataframe(
@@ -418,6 +462,7 @@ def create_plots_for_image(image_dir: Path, json_ids: list[str] | None) -> None:
     create_chunk_size_plots(benchmarks_df, plots_dir, zarr_format=3)
     create_shuffle_plots(benchmarks_df, plots_dir, zarr_format=2)
     create_shuffle_plots(benchmarks_df, plots_dir, zarr_format=3)
+    # create_shuffle_plots(benchmarks_df, plots_dir, zarr_format='n5')
 
     print("Plotting finished 🕺")
     print(f"Plots saved to {plots_dir}")
@@ -453,9 +498,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--json_ids",
-        nargs=3,
+        nargs=4,
         metavar="JSON_ID",
-        help="provide the ids of the zarr-python-v2, zarr-python-v3 and tensorstore json files you want to process "
+        help="provide the ids of the zarr-python-v2, zarr-python-v3, tensorstore-zarr, and tensorstore-n5 json files you want to process "
         "e.g. 0001 0002 0003. This uses the same ids for all image sub-directories.",
     )
     parser.add_argument(
