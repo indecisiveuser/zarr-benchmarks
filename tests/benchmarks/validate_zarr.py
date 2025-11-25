@@ -29,11 +29,11 @@ def _validate_overall_settings(
         assert zarr_metadata["shape"] == list(image.shape)
         assert zarr_metadata["dtype"] == image.dtype.str
     else:
-        assert zarr_metadata["chunk_grid"]["configuration"]["chunk_shape"] == [
-            chunk_size,
-            chunk_size,
-            chunk_size,
-        ]
+        
+        # With sharding, chunk_shape can be either the chunk size or the shard size (image shape)
+        chunk_shape = zarr_metadata["chunk_grid"]["configuration"]["chunk_shape"]
+        assert chunk_shape == [chunk_size, chunk_size, chunk_size] or chunk_shape == list(
+            image.shape)
         assert zarr_metadata["zarr_format"] == 3
         assert zarr_metadata["shape"] == list(image.shape)
         assert zarr_metadata["data_type"] == str(image.dtype)
@@ -63,8 +63,11 @@ def validate_blosc_zarr_metadata(
         assert compressor["cname"] == blosc_cname
         assert compressor["shuffle"] == shuffle_values[blosc_shuffle]
     else:
-        assert len(zarr_metadata["codecs"]) == 2
-        compressor_codec = zarr_metadata["codecs"][1]
+        assert len(zarr_metadata["codecs"]) == 2 or len(zarr_metadata["codecs"]) == 1
+        if len(zarr_metadata["codecs"]) == 2:
+            compressor_codec = zarr_metadata["codecs"][1]
+        else:
+            compressor_codec = zarr_metadata["codecs"][0]["configuration"]["codecs"][1]
 
         assert compressor_codec["name"] == "blosc"
         assert compressor_codec["configuration"]["clevel"] == blosc_clevel
@@ -90,8 +93,11 @@ def validate_gzip_zarr_metadata(
         assert compressor["id"] == "gzip"
         assert compressor["level"] == gzip_level
     else:
-        assert len(zarr_metadata["codecs"]) == 2
-        compressor_codec = zarr_metadata["codecs"][1]
+        assert len(zarr_metadata["codecs"]) == 2 or len(zarr_metadata["codecs"]) == 1
+        if len(zarr_metadata["codecs"]) == 2:
+            compressor_codec = zarr_metadata["codecs"][1]
+        else:
+            compressor_codec = zarr_metadata["codecs"][0]["configuration"]["codecs"][1]
 
         assert compressor_codec["name"] == "gzip"
         assert compressor_codec["configuration"]["level"] == gzip_level
@@ -115,8 +121,11 @@ def validate_zstd_zarr_metadata(
         assert compressor["id"] == "zstd"
         assert compressor["level"] == zstd_level
     else:
-        assert len(zarr_metadata["codecs"]) == 2
-        compressor_codec = zarr_metadata["codecs"][1]
+        assert len(zarr_metadata["codecs"]) == 2 or len(zarr_metadata["codecs"]) == 1
+        if len(zarr_metadata["codecs"]) == 2:
+            compressor_codec = zarr_metadata["codecs"][1]
+        else:
+            compressor_codec = zarr_metadata["codecs"][0]["configuration"]["codecs"][1]
 
         assert compressor_codec["name"] == "zstd"
         assert compressor_codec["configuration"]["level"] == zstd_level
@@ -137,6 +146,9 @@ def validate_no_compressor_zarr_metadata(
     else:
         assert len(zarr_metadata["codecs"]) == 1
         assert zarr_metadata["codecs"][0] == {
+            "configuration": {"endian": "little"},
+            "name": "bytes",
+        } or zarr_metadata["codecs"][0]["configuration"]["index_codecs"][0] == {
             "configuration": {"endian": "little"},
             "name": "bytes",
         }

@@ -4,7 +4,7 @@
     "min": 1,
     "max": 9
   },
-  "blosc_shuffle": ["shuffle"],
+  "blosc_shuffle": ["noshuffle"],
   "blosc_cname": ["blosclz", "lz4", "lz4hc", "zlib", "zstd"],
   "gzip_level": {
     "min": 1,

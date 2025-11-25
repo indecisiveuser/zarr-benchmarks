@@ -7,6 +7,36 @@ import tensorstore as ts
 from zarr_benchmarks import utils
 
 
+def _adjust_inner_chunk_shape(
+    outer_chunk_shape: tuple[int, ...], desired_inner_chunk_shape: tuple[int, ...]
+) -> tuple[int, ...]:
+    """
+    Adjust the inner chunk shape to evenly divide the outer chunk shape.
+
+    For each dimension, finds the largest divisor of the outer chunk
+    that is <= the desired inner chunk size.
+
+    Args:
+        outer_chunk_shape: The shape of the outer chunk (e.g., full array or chunk grid)
+        desired_inner_chunk_shape: The desired inner chunk (shard) shape
+
+    Returns:
+        Adjusted inner chunk shape that evenly divides the outer chunk shape
+    """
+    adjusted = []
+    for outer, desired_inner in zip(outer_chunk_shape, desired_inner_chunk_shape):
+        if desired_inner >= outer:
+            # If desired inner chunk is >= outer, just use outer dimension
+            adjusted.append(outer)
+        else:
+            # Find the largest divisor of outer that is <= desired_inner
+            for candidate in range(desired_inner, 0, -1):
+                if outer % candidate == 0:
+                    adjusted.append(candidate)
+                    break
+    return tuple(adjusted)
+
+
 def get_compression_ratio(store_path: pathlib.Path, zarr_spec: Literal[2, 3]) -> float:
     zarr_array = _open_zarr_array(store_path, zarr_spec)
     item_size = zarr_array.dtype.numpy_dtype.itemsize
@@ -126,6 +156,28 @@ def _write_zarr_array_v3(
     compressor: dict | None,
     write_empty_chunks: bool = True,
 ) -> None:
+    # Adjust inner chunk shape to evenly divide the outer chunk shape (image.shape)
+    adjusted_chunks = _adjust_inner_chunk_shape(image.shape, chunks)
+
+    index_codecs = [
+        {
+            "name": "bytes",
+            "configuration": {"endian": "little"}
+        }
+    ]
+
+    codecs = [
+        {
+            "name": "sharding_indexed",
+            "configuration": {
+                "chunk_shape": adjusted_chunks,
+                "codecs": [compressor] if compressor is not None else [],
+                "index_codecs": index_codecs,
+                "index_location": "end"
+                } # end configuration
+        } # end sharding indexed
+    ]
+
     dataset = ts.open(
         {
             "driver": "zarr3",
@@ -140,16 +192,18 @@ def _write_zarr_array_v3(
                 "shape": image.shape,
                 "chunk_grid": {
                     "name": "regular",
-                    "configuration": {"chunk_shape": chunks},
+                    # "configuration": {"chunk_shape": chunks},
+                    "configuration": {"chunk_shape": image.shape},
                 },
-                "codecs": (
-                    [
-                        {"name": "bytes", "configuration": {"endian": "little"}},
-                        compressor,
-                    ]
-                    if compressor is not None
-                    else [{"name": "bytes", "configuration": {"endian": "little"}}]
-                ),
+                # "codecs": (
+                #     [
+                #         {"name": "bytes", "configuration": {"endian": "little"}},
+                #         compressor,
+                #     ]
+                #     if compressor is not None
+                #     else [{"name": "bytes", "configuration": {"endian": "little"}}]
+                # ),
+                "codecs": codecs,
                 "fill_value": 0,
             },
             "create": True,

@@ -125,7 +125,8 @@ def get_benchmarks_dataframe(package_paths_dict: dict) -> pd.DataFrame:
 def create_shuffle_plots(
     benchmarks_df: pd.DataFrame, plots_dir: Path, zarr_format: Literal[2, 3, 'n5']
 ) -> None:
-    package = "tensorstore"
+    package='tensorstore'
+    packages = ["tensorstore-zarr", "tensorstore-n5"]
     shuffle_benchmarks = benchmarks_df[
         (benchmarks_df.compressor == "blosc-zstd")
         & (benchmarks_df.compression_level == 3)
@@ -134,14 +135,21 @@ def create_shuffle_plots(
     save_dir = plots_dir / "shuffle" / f"format_v{zarr_format}"
     write = shuffle_benchmarks[
         (shuffle_benchmarks.group == "write")
-        & (shuffle_benchmarks.package == package)
-        & (shuffle_benchmarks.zarr_spec == zarr_format)
+        & ((shuffle_benchmarks.package == packages[0]) | (shuffle_benchmarks.package == packages[1]))
+        & ((shuffle_benchmarks.zarr_spec == zarr_format) | (shuffle_benchmarks.zarr_spec == 'n5'))
     ]
     read = shuffle_benchmarks[
         (shuffle_benchmarks.group == "read")
-        & (shuffle_benchmarks.package == package)
-        & (shuffle_benchmarks.zarr_spec == zarr_format)
+        & ((shuffle_benchmarks.package == packages[0]) | (shuffle_benchmarks.package == packages[1]))
+        & ((shuffle_benchmarks.zarr_spec == zarr_format) | (shuffle_benchmarks.zarr_spec == 'n5'))
     ]
+
+    if write.empty or read.empty:
+        print(
+            f"Skipping shuffle plots for {package}, as no data for format {zarr_format}"
+        )
+        return
+
 
     plot_catplot_benchmarks(
         data=read,
@@ -344,7 +352,7 @@ def create_read_write_plots(
 ) -> None:
     read_write_benchmarks = benchmarks_df[
         (benchmarks_df.chunk_size.isin([64, 128]))
-        & (~benchmarks_df.blosc_shuffle.isin(["noshuffle", "bitshuffle"]))
+        & (~benchmarks_df.blosc_shuffle.isin(["shuffle", "bitshuffle"]))
     ]
 
     create_read_write_plots_for_package(
