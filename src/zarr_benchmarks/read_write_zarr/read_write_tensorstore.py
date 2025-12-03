@@ -174,8 +174,8 @@ def _write_zarr_array_v3(
                 "codecs": [compressor] if compressor is not None else [],
                 "index_codecs": index_codecs,
                 "index_location": "end"
-                } # end configuration
-        } # end sharding indexed
+                } 
+        }
     ]
 
     dataset = ts.open(
@@ -212,8 +212,9 @@ def _write_zarr_array_v3(
         },
     ).result()
 
-    write_future = dataset[:].write(image)
-    write_future.result()
+    with ts.Transaction() as txn:
+        write_future = dataset.with_transaction(txn).write(image)
+        write_future.result()
 
 
 def write_zarr_array(

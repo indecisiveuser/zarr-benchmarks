@@ -157,7 +157,7 @@ def create_shuffle_plots(
         y_axis="compression_ratio",
         plots_dir=save_dir,
         plot_name="compression_ratio",
-        title=f"Shuffle vs. compression ratio (Format {zarr_format}, {package})",
+        title=f"Compression ratio vs shuffle (Format {zarr_format}, {package})",
     )
 
     plot_catplot_benchmarks(
@@ -166,7 +166,7 @@ def create_shuffle_plots(
         y_axis="stats.mean",
         plots_dir=save_dir,
         plot_name="write",
-        title=f"Shuffle vs. write time (Format {zarr_format}, {package})",
+        title=f"Write time vs shuffle (Format {zarr_format}, {package})",
     )
 
     plot_catplot_benchmarks(
@@ -175,7 +175,7 @@ def create_shuffle_plots(
         y_axis="stats.mean",
         plots_dir=save_dir,
         plot_name="read",
-        title=f"Shuffle vs. read time (Format {zarr_format}, {package})",
+        title=f"Read time vs shuffle (Format {zarr_format}, {package})",
     )
 
 
@@ -200,7 +200,7 @@ def create_chunk_size_plots(
         x_axis="chunk_size",
         y_axis="compression_ratio",
         hue="package",
-        title=f"Chunk size vs. compression ratio ({spec_str})",
+        title=f"Compression ratio vs chunk size ({spec_str})",
         plots_dir=save_dir,
         plot_name="compression_ratio",
     )
@@ -210,7 +210,7 @@ def create_chunk_size_plots(
         y_axis="stats.mean",
         x_axis="chunk_size",
         hue="package",
-        title=f"Chunk size vs. write time ({spec_str})",
+        title=f"Write time vs chunk size ({spec_str})",
         plots_dir=save_dir,
         plot_name="write",
     )
@@ -220,7 +220,7 @@ def create_chunk_size_plots(
         y_axis="stats.mean",
         x_axis="chunk_size",
         hue="package",
-        title=f"Chunk size vs. read time ({spec_str})",
+        title=f"Read time vs chunk size ({spec_str})",
         plots_dir=save_dir,
         plot_name="read",
     )
@@ -278,6 +278,7 @@ def create_read_write_plots_for_package(
     plots_dir: Path,
     zarr_format: Literal[2, 3, 'n5'],
 ) -> None:
+
     package_benchmarks = read_write_benchmarks[read_write_benchmarks.package == package]
 
     write = package_benchmarks[
@@ -304,7 +305,7 @@ def create_read_write_plots_for_package(
         hue="compressor",
         size="compression_level",
         col="chunk_size",
-        title=f"Write time vs. compression ratio ({spec_str}, {package})",
+        title=f"Compression ratio vs write time ({spec_str}, {package})",
         plots_dir=plots_dir / "write" / f"format_v{zarr_format}",
         plot_name=f"{package}_chunk_size_all",
     )
@@ -316,7 +317,7 @@ def create_read_write_plots_for_package(
         hue="compressor",
         size="compression_level",
         col="chunk_size",
-        title=f"Read time vs. compression ratio ({spec_str}, {package})",
+        title=f"Compression ratio vs read time ({spec_str}, {package})",
         plots_dir=plots_dir / "read" / f"format_v{zarr_format}",
         plot_name=f"{package}_chunk_size_all",
     )
@@ -330,7 +331,7 @@ def create_read_write_plots_for_package(
         y_axis="compression_ratio",
         hue="compressor",
         size="compression_level",
-        title=f"Write time vs. compression ratio ({spec_str}, {package})",
+        title=f"Compression ratio vs write time 128 ({spec_str}, {package})",
         plots_dir=plots_dir / "write" / f"format_v{zarr_format}",
         plot_name=f"{package}",
     )
@@ -341,7 +342,7 @@ def create_read_write_plots_for_package(
         y_axis="compression_ratio",
         hue="compressor",
         size="compression_level",
-        title=f"Read time vs. compression ratio ({spec_str}, {package})",
+        title=f"Compression ratio vs read time 128 ({spec_str}, {package})",
         plots_dir=plots_dir / "read" / f"format_v{zarr_format}",
         plot_name=f"{package}",
     )
@@ -362,10 +363,10 @@ def create_read_write_plots(
         read_write_benchmarks, "zarr_python_3", plots_dir, zarr_format
     )
     create_read_write_plots_for_package(
-        read_write_benchmarks, "tensorstore_zarr", plots_dir, zarr_format
+        read_write_benchmarks, "tensorstore-zarr", plots_dir, zarr_format
     )
     create_read_write_plots_for_package(
-        read_write_benchmarks, "tensorstore_n5", plots_dir, zarr_format
+        read_write_benchmarks, "tensorstore-n5", plots_dir, zarr_format
     )
 
     create_read_write_errorbar_plots_for_package(
@@ -375,10 +376,10 @@ def create_read_write_plots(
         read_write_benchmarks, "zarr_python_3", plots_dir, zarr_format
     )
     create_read_write_errorbar_plots_for_package(
-        read_write_benchmarks, "tensorstore_zarr", plots_dir, zarr_format
+        read_write_benchmarks, "tensorstore-zarr", plots_dir, zarr_format
     )
     create_read_write_errorbar_plots_for_package(
-        read_write_benchmarks, "tensorstore_n5", plots_dir, zarr_format
+        read_write_benchmarks, "tensorstore-n5", plots_dir, zarr_format
     )
 
     read_chunks_128 = read_write_benchmarks[
@@ -409,7 +410,7 @@ def create_read_write_plots(
         size="compression_level",
         plots_dir=plots_dir / "read" / f"format_v{zarr_format}",
         plot_name="all_packages",
-        title=f"Read time vs. compression ratio ({spec_str})",
+        title=f"Compression ratio vs read time ({spec_str})",
     )
 
     plot_relplot_benchmarks(
@@ -421,7 +422,7 @@ def create_read_write_plots(
         size="compression_level",
         plots_dir=plots_dir / "write" / f"format_v{zarr_format}",
         plot_name="all_packages",
-        title=f"Write time vs. compression ratio ({spec_str})",
+        title=f"Compression ratio vs write time ({spec_str})",
     )
 
 

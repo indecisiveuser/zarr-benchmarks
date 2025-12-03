@@ -29,13 +29,18 @@ def _fetch_from_file_system(image_name: str, zarr: bool = True) -> npt.NDArray:
 
 
 def get_data(zarr: bool = True) -> npt.NDArray:
-    """Fetch image of a heart from the human organ atlas."""
+    """Fetch sample stitching dataset."""
     if zarr:
         return _fetch_from_file_system('/Users/schweinfurthl/Downloads/benchmarking_test_dataset/dataset.ome.zarr/s14-t0.zarr/1', zarr)
     else:
         return _fetch_from_file_system('/Users/schweinfurthl/Downloads/benchmarking_test_dataset/dataset.n5/setup14/timepoint0/s1', zarr)
     
-
+def get_liconn(zarr: bool = True) -> npt.NDArray:
+    """Fetch image of a heart from the human organ atlas."""
+    if zarr:
+        return _fetch_from_file_system('/Users/schweinfurthl/Downloads/liconn-test/dataset.ome.zarr/s0-t0.zarr/1', zarr)
+    else:
+        return _fetch_from_file_system('/Users/schweinfurthl/Downloads/liconn-test/dataset.n5/setup0/timepoint0/s1', zarr)
 
 # def get_dense_segmentation() -> npt.NDArray:
 #     """Fetch small subset of C3 segmentation data from the H01 release"""

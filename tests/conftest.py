@@ -5,7 +5,8 @@ import numpy as np
 import pytest
 
 from zarr_benchmarks.fetch_datasets import (
-    get_data
+    get_data,
+    get_liconn
 )
 from zarr_benchmarks.utils import read_json_file
 
@@ -24,9 +25,9 @@ def pytest_addoption(parser):
         action="store",
         default="dev",
         type=str,
-        choices=["dev", "data"],
+        choices=["dev", "data", "liconn"],
         help="Type of image to run benchmarks with: 'dev' is a small 128x128x128 numpy array for testing purposes, "
-        "'data' is your data",
+        "'data' is your data, 'liconn' is the liconn heart image from the human organ atlas",
     )
 
     parser.addoption(
@@ -72,6 +73,11 @@ def image(request):
             has_n5_marker = any(item.get_closest_marker("n5") for item in request.session.items)
             is_zarr = not has_n5_marker
             return get_data(zarr=is_zarr)
+        case "liconn":
+            # Check if any of the collected test items have the "n5" marker
+            has_n5_marker = any(item.get_closest_marker("n5") for item in request.session.items)
+            is_zarr = not has_n5_marker
+            return get_liconn(zarr=is_zarr)
         case _:
             raise ValueError(f"Invalid --image option {image_type}")
 
