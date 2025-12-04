@@ -39,8 +39,8 @@ required. See the [development dependencies](#development-dependencies) section.
 To run all benchmarks (with all images) run the following tox commands:
 
 ```bash
-# Run with an image of a heart from the Human Organ Atlas
-pixi run tox -- --benchmark-only --image=data --config=all --benchmark-storage=data/results/heart
+# Run with local data
+pixi run tox -- --benchmark-only --image=data --config=all --benchmark-storage=data/results/data
 ```
 
 This will run all benchmarks via `zarr-python` version 2 + 3 and `tensorstore`
@@ -71,7 +71,7 @@ selection of parameters for quick test runs). To run with parameters from a
 single config file use e.g.
 
 ```bash
-pixi run tox -- --benchmark-only --image=heart --config=shuffle --benchmark-storage=data/results/data
+pixi run tox -- --benchmark-only --image=data --config=shuffle --benchmark-storage=data/results/data
 ```
 
 ### Specific package
@@ -80,16 +80,16 @@ To only run benchmarks for a specific package, use the `-e` option:
 
 ```bash
 # tensorstore zarr only
-pixi run tox run -e py313-tensorstore-zarr -- --benchmark-only --image=data --config=all --benchmark-storage=data/results/heart
+pixi run tox run -e py313-tensorstore-zarr -- --benchmark-only --image=data --config=all --benchmark-storage=data/results/data
 
 # tensorstore zarr only
-pixi run tox run -e py313-tensorstore-n5 -- --benchmark-only --image=data --config=all --benchmark-storage=data/results/heart
+pixi run tox run -e py313-tensorstore-n5 -- --benchmark-only --image=data --config=all --benchmark-storage=data/results/data
 
 # zarr-python v2 only
-pixi run tox run -e py313-zarrv2 -- --benchmark-only --image=heart --config=all --benchmark-storage=data/results/heart
+pixi run tox run -e py313-zarrv2 -- --benchmark-only --image=data --config=all --benchmark-storage=data/results/data
 
 # zarr-python v3 only
-pixi run tox run -e py313-zarrv3 -- --benchmark-only --image=heart --config=all --benchmark-storage=data/results/heart
+pixi run tox run -e py313-zarrv3 -- --benchmark-only --image=data --config=all --benchmark-storage=data/results/data
 ```
 
 To see a list of available environments, use `tox -l`.
@@ -100,7 +100,7 @@ Removing the `--config` option will use a small `dev` config to test a small
 selection of parameters:
 
 ```bash
-pixi run tox -- --benchmark-only --image=data --benchmark-storage=data/results/heart
+pixi run tox -- --benchmark-only --image=data --benchmark-storage=data/results/data
 ```
 
 You can also use a smaller image (128x128x128 numpy array) by using
